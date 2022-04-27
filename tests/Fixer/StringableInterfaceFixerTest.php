@@ -197,5 +197,36 @@ final class StringableInterfaceFixerTest extends AbstractFixerTestCase
             class Foo5 { public function __noString() { return "5"; } }
             ',
         ];
+
+        yield [
+            '<?php namespace FooNamespace;
+            use Stringable;
+            class Foo1 implements Stringable { public function __toString() { return "Foo"; } }
+            ',
+        ];
+
+        yield [
+            '<?php use Stringable as Stringy;
+            class Foo1 implements Stringy { public function __toString() { return "Foo"; } }
+            ',
+        ];
+
+        yield [
+            '<?php namespace FooNamespace;
+            use Stringable as Stringy;
+            class Foo1 implements Stringy { public function __toString() { return "Foo"; } }
+            ',
+        ];
+
+        yield [
+            '<?php namespace FooNamespace { use Stringable as Stringy; class Foo {} };
+            namespace BarNamespace;
+            class Bar implements Stringy, \Stringable { public function __toString() { return "Bar"; } }
+            ',
+            '<?php namespace FooNamespace { use Stringable as Stringy; class Foo {} };
+            namespace BarNamespace;
+            class Bar implements Stringy { public function __toString() { return "Bar"; } }
+            ',
+        ];
     }
 }

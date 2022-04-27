@@ -14,6 +14,9 @@ namespace PhpCsFixerCustomFixers\Fixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
+use PhpCsFixer\Tokenizer\Analyzer\Analysis\NamespaceUseAnalysis;
+use PhpCsFixer\Tokenizer\Analyzer\NamespacesAnalyzer;
+use PhpCsFixer\Tokenizer\Analyzer\NamespaceUsesAnalyzer;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
@@ -148,7 +151,7 @@ class Foo
     {
         for ($index = $implementsStartIndex; $index < $implementsEndIndex; $index++) {
             if (!$tokens[$index]->equals([\T_STRING, 'Stringable'], false)) {
-                continue;
+                // continue;
             }
 
             $namespaceSeparatorIndex = $tokens->getPrevMeaningfulToken($index);
@@ -164,6 +167,47 @@ class Foo
             } else {
                 if (!$isNamespaced) {
                     return true;
+                }
+
+                $namespaceDeclarationIndex = $tokens->getPrevTokenOfKind($implementsStartIndex - 1, [[\T_NAMESPACE]]);
+
+                if (null === $namespaceDeclarationIndex) {
+                    return false;
+                }
+
+                $classDeclarationIndex = $tokens->getPrevTokenOfKind($implementsStartIndex - 1, [[\T_CLASS]]);
+                /*
+                $useDeclarationTokenSequence = $tokens->findSequence(
+                    [[\T_USE]],
+                    $namespaceDeclarationIndex,
+                    $implementsStartIndex - 1
+                );*/
+// throw new \Exception('ITERATION: ' . print_r($useDeclarationTokenSequence, true));
+                /*
+                if (null === $useDeclarationTokenSequence) {
+                    return false;
+                }
+                */
+
+                // $useDeclarationTokens = Tokens::fromArray($useDeclarationTokenSequence, false);
+                $useDeclarationTokens = $tokens;
+//throw new \Exception('ITERATION: ' . print_r($useDeclarationTokens, true));
+                $useDeclarations = (new NamespaceUsesAnalyzer())->getDeclarationsFromTokens($useDeclarationTokens);
+
+                foreach ((new NamespacesAnalyzer())->getDeclarations($useDeclarationTokens) as $namespace) {
+                    $currentNamespaceUseDeclarations = \array_filter(
+                        $useDeclarations,
+                        static function (NamespaceUseAnalysis $useDeclaration) use ($namespace): bool {
+                            return $useDeclaration->getStartIndex() >= $namespace->getScopeStartIndex()
+                                && $useDeclaration->getEndIndex() <= $namespace->getScopeEndIndex();
+                        }
+                    );
+
+                    foreach ($currentNamespaceUseDeclarations as $useDeclaration) {
+                        if (0 === strcasecmp($useDeclaration->getFullName(), 'Stringable')) {
+                            return true;
+                        }
+                    }
                 }
             }
         }
